@@ -1,13 +1,13 @@
 import React from "react";
 import Navbar from "../../Components/NavBar";
 
-const Booking = () => {
+const Ledger = () => {
   return (
     <div>
-      <Navbar tab={"bookings"} />
-      Booking
+      <Navbar tab={"ledger"} />
+      LEDGER
     </div>
   );
 };
 
-export default Booking;
+export default Ledger;

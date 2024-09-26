@@ -7,6 +7,8 @@ import Dashboard from "./Screens/Dashboard/Dashboard";
 import ProtectedRoute from "./ProtectedRoute";
 import ErrorPage from "./Components/ErrorPage"
 import Booking from "./Screens/Booking/Booking";
+import Ledger from "./Screens/Ledger/Ledger";
+import Profile from "./Screens/Profile/Profile";
 
 function App() {
   return (
@@ -20,7 +22,9 @@ function App() {
 
           <Route path="/" element={<ProtectedRoute />}>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/booking" element={<Booking />} />
+            <Route path="/bookings" element={<Booking />} />
+            <Route path="/ledger" element={<Ledger />} />
+            <Route path="/profile" element={<Profile />} />
           </Route>
 
           <Route path="*" element={<ErrorPage />} />
