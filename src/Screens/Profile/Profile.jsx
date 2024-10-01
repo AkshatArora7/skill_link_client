@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { auth, db } from '../../firebaseConfig';
 import { useAuth } from '../../authContext';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
@@ -18,6 +19,10 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [editingIndex, setEditingIndex] = useState(null);
   const [newRate, setNewRate] = useState('');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false); // Track unsaved changes
+
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -39,8 +44,6 @@ const Profile = () => {
             })
           );
           setProfileData({ ...clientData, roles: rolesWithNames });
-        } else {
-          console.error('No such document!');
         }
       } catch (error) {
         console.error('Error fetching client data:', error);
@@ -50,6 +53,41 @@ const Profile = () => {
 
     fetchProfileData();
   }, [currentUser]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (event) => {
+      if (hasUnsavedChanges) {
+        event.preventDefault();
+        event.returnValue = ''; // Standard for most browsers
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [hasUnsavedChanges]);
+
+  // Handling internal navigation with react-router-dom
+  // useEffect(() => {
+  //   const unblock = navigate.block((tx) => {
+  //     if (hasUnsavedChanges) {
+  //       const confirm = window.confirm("You have unsaved changes, do you really want to leave?");
+  //       if (confirm) {
+  //         unblock(); // Allow navigation
+  //         tx.retry(); // Retry the navigation
+  //       }
+  //     } else {
+  //       unblock(); // No unsaved changes, allow navigation
+  //       tx.retry(); // Retry the navigation
+  //     }
+  //   });
+
+  //   return () => {
+  //     unblock(); // Cleanup when component unmounts
+  //   };
+  // }, [hasUnsavedChanges, navigate]);
 
   const handleEditRate = (index) => {
     setEditingIndex(index);
@@ -61,12 +99,14 @@ const Profile = () => {
     updatedRoles[index].rate = newRate;
     setProfileData({ ...profileData, roles: updatedRoles });
     setEditingIndex(null);
+    setHasUnsavedChanges(true); // Mark unsaved changes
   };
 
   const handleRoleToggle = (index) => {
     const updatedRoles = [...profileData.roles];
     updatedRoles[index].isActive = !updatedRoles[index].isActive;
     setProfileData({ ...profileData, roles: updatedRoles });
+    setHasUnsavedChanges(true); // Mark unsaved changes
   };
 
   const handleProfilePicChange = (e) => {
@@ -76,12 +116,14 @@ const Profile = () => {
         ...prevData,
         profilePic: URL.createObjectURL(file),
       }));
+      setHasUnsavedChanges(true); // Mark unsaved changes
     }
   };
 
   const handleRemoveRole = (index) => {
     const updatedRoles = profileData.roles.filter((_, i) => i !== index);
     setProfileData({ ...profileData, roles: updatedRoles });
+    setHasUnsavedChanges(true); // Mark unsaved changes
   };
 
   const handleSave = async () => {
@@ -91,6 +133,7 @@ const Profile = () => {
       const docRef = doc(db, 'clients', currentUser.uid);
       await updateDoc(docRef, profileData);
       console.log('Profile updated successfully');
+      setHasUnsavedChanges(false); // Reset unsaved changes flag
     } catch (error) {
       console.error('Error updating profile:', error);
     }
@@ -129,7 +172,10 @@ const Profile = () => {
             id="firstName"
             name="firstName"
             value={profileData.firstName}
-            onChange={(e) => setProfileData({ ...profileData, firstName: e.target.value })}
+            onChange={(e) => {
+              setProfileData({ ...profileData, firstName: e.target.value });
+              setHasUnsavedChanges(true); // Mark unsaved changes
+            }}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
           />
         </div>
@@ -141,7 +187,10 @@ const Profile = () => {
             id="lastName"
             name="lastName"
             value={profileData.lastName}
-            onChange={(e) => setProfileData({ ...profileData, lastName: e.target.value })}
+            onChange={(e) => {
+              setProfileData({ ...profileData, lastName: e.target.value });
+              setHasUnsavedChanges(true); // Mark unsaved changes
+            }}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
           />
         </div>
@@ -175,34 +224,34 @@ const Profile = () => {
 
               {/* Rate Display or Edit Field */}
               {editingIndex === index ? (
-                <div className="flex items-center">
+                <div className="flex justify-center">
                   <input
                     type="number"
                     value={newRate}
                     onChange={(e) => setNewRate(e.target.value)}
-                    className="w-20 px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                    onBlur={() => handleRateChange(index)}
+                    className="block px-2 py-1 border border-gray-300 rounded-md shadow-sm"
                   />
-                  <button
-                    onClick={() => handleRateChange(index)}
-                    className="ml-2 bg-blue-500 text-white px-2 py-1 rounded-md"
-                  >
-                    Save
-                  </button>
                 </div>
               ) : (
-                <span className="text-gray-700 text-center">{roleObj.rate}</span>
+                <span
+                  onClick={() => handleEditRate(index)}
+                  className="text-center text-gray-700 cursor-pointer hover:underline"
+                >
+                  {roleObj.rate}
+                </span>
               )}
 
-              <div className="flex justify-center items-center">
-                {/* Active Switch */}
+              {/* Toggle Active/Inactive */}
+              <div className="flex justify-center">
                 <div
-                  className={`relative cursor-pointer w-12 h-6 rounded-full transition duration-300 ease-in-out ${
+                  onClick={() => handleRoleToggle(index)}
+                  className={`relative w-12 h-6 bg-gray-300 rounded-full cursor-pointer ${
                     roleObj.isActive ? 'bg-green-500' : 'bg-gray-300'
                   }`}
-                  onClick={() => handleRoleToggle(index)}
                 >
                   <div
-                    className={`bg-white w-6 h-6 rounded-full shadow-md transform transition-all duration-300 ease-in-out ${
+                    className={`absolute top-0 left-0 w-6 h-6 bg-white rounded-full shadow-md transform transition-all duration-300 ease-in-out ${
                       roleObj.isActive ? 'translate-x-6' : ''
                     }`}
                   />
