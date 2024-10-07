@@ -1,14 +1,14 @@
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./authContext";
-import SignIn from "./Screens/Authentication/SignIn";
-import SignUp from "./Screens/Authentication/SignUp";
-import Dashboard from "./Screens/Dashboard/Dashboard";
+import SignIn from "./screens/Authentication/SignIn";
+import SignUp from "./screens/Authentication/SignUp";
+import Dashboard from "./screens/Dashboard/Dashboard";
 import ProtectedRoute from "./ProtectedRoute";
-import ErrorPage from "./Components/ErrorPage"
-import Booking from "./Screens/Booking/Booking";
-import Ledger from "./Screens/Ledger/Ledger";
-import Profile from "./Screens/Profile/Profile";
+import ErrorPage from "./components/ErrorPage"
+import Ledger from "./screens/Ledger/Ledger";
+import Booking from "./screens/Booking/Booking";
+import Profile from "./screens/Profile/Profile";
 
 function App() {
   return (

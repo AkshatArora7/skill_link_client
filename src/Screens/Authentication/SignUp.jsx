@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { auth, db } from "../../firebaseConfig";
 import { useAuth } from "../../authContext";
-import TermsAndConditions from "../../Components/Policy";
+import TermsAndConditions from "../../components/Policy";
 import { Navigate, Link, useNavigate } from "react-router-dom";
 import Select from "react-select";
 

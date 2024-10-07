@@ -1,7 +1,7 @@
 import React from 'react';
 import { auth } from '../../firebaseConfig'; 
 import { useNavigate } from 'react-router-dom';
-import Navbar from '../../Components/NavBar';
+import Navbar from '../../components/NavBar';
 
 const Dashboard = () => {
 

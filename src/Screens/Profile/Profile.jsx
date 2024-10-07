@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { auth, db } from '../../firebaseConfig';
+import { auth, db, storage } from '../../firebaseConfig'; // Make sure to import storage
 import { useAuth } from '../../authContext';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import NavBar from '../../Components/NavBar';
-import Loading from '../../Components/Loading';
-import RoleOptionsDropdown from '../../Components/ProfileRoleOptions';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'; // Import necessary functions from Firebase Storage
+import NavBar from '../../components/NavBar';
+import Loading from '../../components/Loading';
+import RoleOptionsDropdown from '../../components/ProfileRoleOptions';
 
 const Profile = () => {
   const { currentUser } = useAuth();
@@ -16,13 +17,11 @@ const Profile = () => {
     profilePic: '',
     roles: [],
   });
+  const [newProfilePic, setNewProfilePic] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editingIndex, setEditingIndex] = useState(null);
   const [newRate, setNewRate] = useState('');
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false); // Track unsaved changes
-
-  const navigate = useNavigate();
-  const location = useLocation();
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -54,41 +53,6 @@ const Profile = () => {
     fetchProfileData();
   }, [currentUser]);
 
-  useEffect(() => {
-    const handleBeforeUnload = (event) => {
-      if (hasUnsavedChanges) {
-        event.preventDefault();
-        event.returnValue = ''; // Standard for most browsers
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [hasUnsavedChanges]);
-
-  // Handling internal navigation with react-router-dom
-  // useEffect(() => {
-  //   const unblock = navigate.block((tx) => {
-  //     if (hasUnsavedChanges) {
-  //       const confirm = window.confirm("You have unsaved changes, do you really want to leave?");
-  //       if (confirm) {
-  //         unblock(); // Allow navigation
-  //         tx.retry(); // Retry the navigation
-  //       }
-  //     } else {
-  //       unblock(); // No unsaved changes, allow navigation
-  //       tx.retry(); // Retry the navigation
-  //     }
-  //   });
-
-  //   return () => {
-  //     unblock(); // Cleanup when component unmounts
-  //   };
-  // }, [hasUnsavedChanges, navigate]);
-
   const handleEditRate = (index) => {
     setEditingIndex(index);
     setNewRate(profileData.roles[index].rate);
@@ -99,48 +63,72 @@ const Profile = () => {
     updatedRoles[index].rate = newRate;
     setProfileData({ ...profileData, roles: updatedRoles });
     setEditingIndex(null);
-    setHasUnsavedChanges(true); // Mark unsaved changes
   };
 
   const handleRoleToggle = (index) => {
     const updatedRoles = [...profileData.roles];
     updatedRoles[index].isActive = !updatedRoles[index].isActive;
     setProfileData({ ...profileData, roles: updatedRoles });
-    setHasUnsavedChanges(true); // Mark unsaved changes
   };
 
-  const handleProfilePicChange = (e) => {
+  const handleProfilePicChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
+      setNewProfilePic(file); // Store the new file
       setProfileData((prevData) => ({
         ...prevData,
-        profilePic: URL.createObjectURL(file),
+        profilePic: URL.createObjectURL(file), // Preview of the selected picture
       }));
-      setHasUnsavedChanges(true); // Mark unsaved changes
     }
   };
 
   const handleRemoveRole = (index) => {
     const updatedRoles = profileData.roles.filter((_, i) => i !== index);
     setProfileData({ ...profileData, roles: updatedRoles });
-    setHasUnsavedChanges(true); // Mark unsaved changes
   };
 
   const handleSave = async () => {
     if (!currentUser) return;
 
+    setIsSaving(true)
+    let profilePicUrl = profileData.profilePic;
+
+    if (newProfilePic) {
+      const storageRef = ref(storage, `profilePictures/${currentUser.uid}`);
+      try {
+        // Upload the file to Firebase Storage
+        await uploadBytes(storageRef, newProfilePic);
+        // Get the download URL
+        profilePicUrl = await getDownloadURL(storageRef);
+        console.log('Profile picture uploaded successfully:', profilePicUrl);
+      } catch (error) {
+        console.error('Error uploading profile picture:', error);
+        setIsSaving(false);  // Hide loading if there's an error
+        return; // Stop execution if upload fails
+      }
+    }
+
     try {
       const docRef = doc(db, 'clients', currentUser.uid);
-      await updateDoc(docRef, profileData);
-      console.log('Profile updated successfully');
-      setHasUnsavedChanges(false); // Reset unsaved changes flag
+      await updateDoc(docRef, {...profileData,
+        profilePic: profilePicUrl
+      });
+      setNewProfilePic(null);
+
+      window.location.reload();
     } catch (error) {
       console.error('Error updating profile:', error);
+    }finally{
+      setIsSaving(false)
     }
   };
 
   if (loading) {
     return <Loading />;
+  }
+
+  if(isSaving){
+    return <Loading/>;
   }
 
   return (
@@ -172,10 +160,7 @@ const Profile = () => {
             id="firstName"
             name="firstName"
             value={profileData.firstName}
-            onChange={(e) => {
-              setProfileData({ ...profileData, firstName: e.target.value });
-              setHasUnsavedChanges(true); // Mark unsaved changes
-            }}
+            onChange={(e) => setProfileData({ ...profileData, firstName: e.target.value })}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
           />
         </div>
@@ -187,10 +172,7 @@ const Profile = () => {
             id="lastName"
             name="lastName"
             value={profileData.lastName}
-            onChange={(e) => {
-              setProfileData({ ...profileData, lastName: e.target.value });
-              setHasUnsavedChanges(true); // Mark unsaved changes
-            }}
+            onChange={(e) => setProfileData({ ...profileData, lastName: e.target.value })}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
           />
         </div>
@@ -260,7 +242,6 @@ const Profile = () => {
 
               <div className="flex justify-end">
                 <RoleOptionsDropdown
-                  onEditPrice={() => handleEditRate(index)} // Call the edit handler
                   onRemoveRole={() => handleRemoveRole(index)}
                 />
               </div>
@@ -269,10 +250,12 @@ const Profile = () => {
         </div>
 
         <button
+
+
           onClick={handleSave}
-          className="mt-6 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:outline-none"
+          className="mt-4 w-full bg-blue-500 text-white py-2 rounded-md shadow-md hover:bg-blue-600"
         >
-          Save Changes
+          Save Profile
         </button>
       </div>
     </div>

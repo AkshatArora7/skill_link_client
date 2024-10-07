@@ -1,14 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import Navbar from '../../Components/NavBar';
-import { useAuth } from '../../authContext'; // Assuming you have an Auth Context to get currentUser
-import { db } from '../../firebaseConfig'; // Firestore configuration
+import Navbar from '../../components/NavBar';
+import { useAuth } from '../../authContext';
+import { db } from '../../firebaseConfig';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import Loading from '../../Components/Loading'; // Assuming you have a loading component
+import Loading from '../../components/Loading';
+import { Calendar, momentLocalizer } from 'react-big-calendar';
+import moment from 'moment';
+import 'react-big-calendar/lib/css/react-big-calendar.css';
+
+// Configure the localizer by providing the moment Object to the correct localizer.
+const localizer = momentLocalizer(moment);
 
 const Booking = () => {
-  const { currentUser } = useAuth(); // Get the logged-in user
+  const { currentUser } = useAuth();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false); // State for modal visibility
 
   useEffect(() => {
     const fetchBookings = async () => {
@@ -25,7 +32,6 @@ const Booking = () => {
           id: doc.id,
           ...doc.data(),
         }));
-
         setBookings(bookingsData);
         setLoading(false);
       } catch (error) {
@@ -37,6 +43,28 @@ const Booking = () => {
     fetchBookings();
   }, [currentUser]);
 
+  const handleOpenModal = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+  };
+
+  // Prepare events for the calendar
+  const events = bookings.map((booking) => {
+    const start = new Date(booking.date);
+    const end = new Date(start.getTime() + 60 * 60 * 1000);
+
+    console.log(start);
+    return {
+      id: booking.id,
+      title: booking.selectedProfession,
+      start,
+      end,
+    };
+  });
+
   if (loading) {
     return <Loading />; // Show loading component while fetching
   }
@@ -44,8 +72,16 @@ const Booking = () => {
   return (
     <div className="bg-gray-100 min-h-screen">
       <Navbar tab={"bookings"} />
-      <div className="max-w-4xl mx-auto p-6 bg-white shadow rounded-md mt-6">
+      <div className="relative max-w-4xl mx-auto p-6 bg-white shadow rounded-md mt-6">
         <h2 className="text-2xl font-semibold mb-4">Your Bookings</h2>
+        
+        {/* Calendar Button */}
+        <button
+          onClick={handleOpenModal}
+          className="absolute top-4 right-4 px-4 py-2 bg-blue-600 text-white rounded-md shadow hover:bg-blue-700 transition"
+        >
+          Your Calendar
+        </button>
 
         {bookings.length > 0 ? (
           <div className="space-y-4">
@@ -61,6 +97,40 @@ const Booking = () => {
           </div>
         ) : (
           <p className="text-gray-700">No bookings found.</p>
+        )}
+
+        {/* Modal */}
+        {isModalOpen && (
+          <div className="fixed inset-0 flex items-center justify-center z-50">
+            <div className="absolute inset-0 bg-black opacity-50" onClick={handleCloseModal}></div>
+            <div className="bg-white rounded-lg shadow-lg z-10 relative w-full h-full">
+              <h2 className="text-2xl font-semibold mb-4 p-6">Weekly Calendar</h2>
+              
+              {/* Cross button for closing the modal */}
+              <button
+                onClick={handleCloseModal}
+                className="absolute top-3 right-3 text-gray-600 hover:text-red-600 transition"
+                aria-label="Close modal"
+              >
+                &times; {/* Cross icon */}
+              </button>
+
+              {/* Full-screen Calendar Component */}
+              <div className="h-[calc(100vh-80px)] w-full overflow-hidden">
+                <Calendar
+                  localizer={localizer}
+                  events={events}
+                  startAccessor="start"
+                  endAccessor="end"
+                  style={{ height: '100%', width: '100%' }} // Ensure the calendar takes the full width and height of its container
+                  views={['week']} // Set the calendar to weekly view
+                  defaultView="week" // Set the default view to week
+                  step={30} // Set step to 30 minutes
+                  timeslots={2} // Show two time slots per hour (30-minute intervals)
+                />
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
