@@ -7,6 +7,8 @@ import Loading from '../../components/Loading';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
+import { FaCalendarAlt, FaClock, FaTag, FaUserTie, } from 'react-icons/fa'; // Import icons
+import { FaMoneyCheckDollar } from 'react-icons/fa6';
 
 // Configure the localizer by providing the moment Object to the correct localizer.
 const localizer = momentLocalizer(moment);
@@ -56,7 +58,6 @@ const Booking = () => {
     const start = new Date(booking.date);
     const end = new Date(start.getTime() + 60 * 60 * 1000);
 
-    console.log(start);
     return {
       id: booking.id,
       title: booking.selectedProfession,
@@ -78,20 +79,29 @@ const Booking = () => {
         {/* Calendar Button */}
         <button
           onClick={handleOpenModal}
-          className="absolute top-4 right-4 px-4 py-2 bg-blue-600 text-white rounded-md shadow hover:bg-blue-700 transition"
+          className="absolute top-4 right-4 px-4 py-2 text-blue-700 rounded-md hover:shadow transition"
         >
-          Your Calendar
+          <FaCalendarAlt/>
         </button>
 
         {bookings.length > 0 ? (
           <div className="space-y-4">
             {bookings.map((booking) => (
-              <div key={booking.id} className="p-4 bg-gray-200 rounded-md shadow-md">
-                <h3 className="text-xl font-semibold mb-2">Booking ID: {booking.id}</h3>
-                <p className="text-sm">Service: {booking.selectedProfession}</p>
-                <p className="text-sm">Date: {booking.date}</p>
-                <p className="text-sm">Time: {booking.time}</p>
-                <p className="text-sm">Price: ${booking.rate}</p>
+              <div key={booking.id} className="p-4 bg-gray-200 rounded-md shadow-md hover:shadow-lg transition-shadow duration-200">
+                <h3 className="text-xl font-semibold mb-2 flex items-center">
+                  <FaTag className="mr-2" /> Booking ID: {booking.id}
+                </h3>
+                <p className="text-sm flex items-center">
+                  <FaUserTie className="mr-1" /> Service: {booking.selectedProfession}
+                </p>
+                <p className="text-sm flex items-center">
+                  <FaCalendarAlt className="mr-1" /> Date: {booking.date}
+                </p>
+                <p className="text-sm flex items-center">
+                  <FaClock className="mr-1" /> Time: {booking.time}
+                </p>
+                <p className="text-sm font-bold flex items-center">
+                  <FaMoneyCheckDollar className="mr-1" /> Price: <span className="text-green-500">${booking.rate}</span></p>
               </div>
             ))}
           </div>
